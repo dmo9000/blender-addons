@@ -2,7 +2,7 @@
 import random
 import bpy
 from bpy.types import Operator  
-from bpy.props import FloatVectorProperty, FloatProperty, IntProperty, StringProperty  
+from bpy.props import FloatVectorProperty, FloatProperty, IntProperty, StringProperty, BoolProperty  
 
 bl_info = {
     "name": "UE4NeuronMapper",
@@ -17,6 +17,8 @@ class UE4NeuronMapper(bpy.types.Operator):
     bl_label = "UE4 Neuron Mapper"
     bl_options = {'REGISTER', 'UNDO'}
 
+    
+
     target_rig = StringProperty(  
         name="Target Rig",  
         default="HeroTPP",  
@@ -29,17 +31,38 @@ class UE4NeuronMapper(bpy.types.Operator):
         description="source_rig"  
         )
 
+
+    map_fingers = BoolProperty(  
+        name="Map Fingers?",  
+        default=True,  
+        description="Map Fingers?"  
+        )        
+    
+    map_feet = BoolProperty(  
+        name="Map Feet?",  
+        default=True,  
+        description="Map Feet?"  
+        )        
+
+    autobake_animation = BoolProperty(  
+        name="Autobake Animation",  
+        default=True,  
+        description="Autobake Animation"  
+        ) 
+
     def invoke(self, context, event):
         if bpy.context.scene.objects.active is None:
             print("No armature selected")
             return {'CANCELLED'}
         else:
+            
             self.source_rig = bpy.context.scene.objects.active.name
             wm = context.window_manager
             return wm.invoke_props_dialog(self)
             return {'FINISHED'}
 
     def execute(self, context):        
+            scene = bpy.context.scene
             # deselect all objects
             source_armature = bpy.data.objects[self.source_rig]
             source_armature.select = False
@@ -60,8 +83,7 @@ class UE4NeuronMapper(bpy.types.Operator):
             # start mapping bones
 
             #bpy.context.space_data.context = 'BONE_CONSTRAINT'
-            for bone in bpy.data.objects[self.target_rig].data.bones:
-                print(bone)
+            for bone in bpy.data.objects[self.target_rig].data.bones:          
                 bone.select = False 
 
             # root -> hips (copy rotation, z-axis only)
@@ -104,6 +126,21 @@ class UE4NeuronMapper(bpy.types.Operator):
             new_constraint.target = source_armature
             new_constraint.subtarget = 'RightFoot'
 
+            if (self.map_feet):
+                # foot_l -> copy transforms from LeftRoot
+                current_bone = target_armature.pose.bones.get("foot_l") 
+                new_constraint = current_bone.constraints.new('COPY_TRANSFORMS')
+                new_constraint.target = source_armature
+                new_constraint.subtarget = 'LeftFoot'
+                new_constraint.target_space = 'LOCAL'
+                new_constraint.owner_space = 'LOCAL'
+                # foot_r -> copy transforms from LeftRoot
+                current_bone = target_armature.pose.bones.get("foot_r") 
+                new_constraint = current_bone.constraints.new('COPY_TRANSFORMS')
+                new_constraint.target = source_armature
+                new_constraint.subtarget = 'RightFoot'
+                new_constraint.target_space = 'LOCAL'
+                new_constraint.owner_space = 'LOCAL'
 
             # spine_01 -> damped track to Spine2
             current_bone = target_armature.pose.bones.get("spine_01") 
@@ -208,30 +245,33 @@ class UE4NeuronMapper(bpy.types.Operator):
             fingermap['pinky_02'] = 'Pinky2'
             fingermap['pinky_03'] = 'Pinky3'
 
-            for finger in fingermap:
-                target_finger = finger + "_l"
-                source_finger = "LeftHand" + fingermap[finger]
-                current_bone = target_armature.pose.bones.get(target_finger) 
-                new_constraint = current_bone.constraints.new('COPY_TRANSFORMS')
-                new_constraint.target = source_armature
-                new_constraint.subtarget = source_finger
-                #new_constraint.head_tail = 1.0
-                new_constraint.target_space = 'LOCAL'
-                new_constraint.owner_space = 'LOCAL'
+            if (self.map_fingers):
+                for finger in fingermap:
+                    target_finger = finger + "_l"
+                    source_finger = "LeftHand" + fingermap[finger]
+                    current_bone = target_armature.pose.bones.get(target_finger) 
+                    new_constraint = current_bone.constraints.new('COPY_TRANSFORMS')
+                    new_constraint.target = source_armature
+                    new_constraint.subtarget = source_finger              
+                    new_constraint.target_space = 'LOCAL'
+                    new_constraint.owner_space = 'LOCAL'
 
-            for finger in fingermap:
-                target_finger = finger + "_r"
-                source_finger = "RightHand" + fingermap[finger]
-                current_bone = target_armature.pose.bones.get(target_finger) 
-                new_constraint = current_bone.constraints.new('COPY_TRANSFORMS')
-                new_constraint.target = source_armature
-                new_constraint.subtarget = source_finger
-                #new_constraint.head_tail = 1.0
-                new_constraint.target_space = 'LOCAL'
-                new_constraint.owner_space = 'LOCAL'
-
-
-            
+                for finger in fingermap:
+                    target_finger = finger + "_r"
+                    source_finger = "RightHand" + fingermap[finger]
+                    current_bone = target_armature.pose.bones.get(target_finger) 
+                    new_constraint = current_bone.constraints.new('COPY_TRANSFORMS')
+                    new_constraint.target = source_armature
+                    new_constraint.subtarget = source_finger
+                    new_constraint.target_space = 'LOCAL'
+                    new_constraint.owner_space = 'LOCAL'
+         
+            if (self.autobake_animation):
+                for bone in bpy.data.objects[self.target_rig].data.bones:          
+                    bone.select = True
+                bpy.ops.nla.bake(frame_start=scene.frame_start, frame_end=scene.frame_end, visual_keying=True, clear_constraints=True, bake_types={'POSE'})
+                for bone in bpy.data.objects[self.target_rig].data.bones:          
+                    bone.select = False
 
             return {'FINISHED'} 
 
