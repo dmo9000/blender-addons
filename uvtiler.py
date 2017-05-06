@@ -51,9 +51,11 @@ class UVTileRandom(bpy.types.Operator):
             sx = 1.0 / tx
             sy = 1.0 / ty
 
-            meshname = bpy.context.scene.objects.active.name
-            print("Selected object is " + meshname)
-            mesh = bpy.data.meshes[meshname]
+            bpy.ops.object.mode_set(mode='OBJECT')
+            objname = bpy.context.scene.objects.active.name
+            print("Selected object is " + objname)
+            objref = bpy.data.objects[objname]
+            mesh = objref.data
             bpy.ops.mesh.uv_texture_remove()
             print("Removed UV's")
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -61,7 +63,7 @@ class UVTileRandom(bpy.types.Operator):
             bpy.ops.uv.reset()
             print("Created new UV's")
             bpy.ops.object.mode_set(mode='OBJECT')
-            uvmap = bpy.data.meshes[meshname].uv_layers.active
+            uvmap =mesh.uv_layers.active      
             print(uvmap)
             for f in mesh.polygons:
                 print("Iterating ...")
