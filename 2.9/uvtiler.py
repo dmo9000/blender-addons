@@ -56,7 +56,8 @@ class UVTileRandom(bpy.types.Operator):
 
     def execute(self, context):
         print("UVTileRandom::Execute")
-        obj = bpy.context.window.scene.objects[0]
+        obj = bpy.context.active_object
+        #obj = bpy.context.window.scene.objects[0]
         if obj is None:
         #if bpy.context.scene.objects.active is None:
             print("No object is selected")
@@ -82,14 +83,14 @@ class UVTileRandom(bpy.types.Operator):
             uvmap =mesh.uv_layers.active      
             print(uvmap)
             for f in mesh.polygons:
-                print("Iterating ...")
+                #print("Iterating ...")
                 ix = random.randint(0, tx-1)
                 iy = random.randint(0, ty-1)
                 for i in f.loop_indices:
                     l = mesh.loops[i]
                     v = mesh.vertices[l.vertex_index]
                     for j, ul in enumerate(mesh.uv_layers):
-                        print("Updating...")
+                        #print("Updating...")
                         uv = ul.data[l.index].uv
                         if uv.x == 1:
                             uv.x = sx
